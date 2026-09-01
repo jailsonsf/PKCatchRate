@@ -114,4 +114,59 @@ class CatchRateControllerTest {
             """))
         .andExpect(status().isNotFound());
   }
+
+  @Test
+  void acceptsStatusAndGeneration() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "pikachu",
+              "level": 50,
+              "currentHp": 110,
+              "ball": "POKE",
+              "status": "SLEEP",
+              "generation": "GEN_V"
+            }
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.a").value(158))
+        .andExpect(jsonPath("$.b").value(58175))
+        .andExpect(jsonPath("$.probability").value(closeTo(69.947, 0.01)));
+  }
+
+  @Test
+  void defaultsToNoStatusButUsesRequestedGeneration() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "pikachu",
+              "level": 50,
+              "currentHp": 110,
+              "ball": "POKE",
+              "generation": "GEN_VI_PLUS"
+            }
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.a").value(63))
+        .andExpect(jsonPath("$.b").value(50473))
+        .andExpect(jsonPath("$.probability").value(closeTo(35.18, 0.01)));
+  }
+
+  @Test
+  void rejectsStatusWithMoreThanOneValue() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "pikachu",
+              "level": 50,
+              "currentHp": 110,
+              "ball": "POKE",
+              "status": ["SLEEP", "BURN"]
+            }
+            """))
+        .andExpect(status().isBadRequest());
+  }
 }
