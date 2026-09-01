@@ -36,7 +36,9 @@ public class CatchRateController {
                 species.baseHp(),
                 request.level(),
                 request.currentHp(),
-                request.ball()));
+                request.ball(),
+                request.status(),
+                request.generation()));
         return ResponseEntity.ok(new CatchRateResponse(
                 result.probability(),
                 result.guaranteed(),
