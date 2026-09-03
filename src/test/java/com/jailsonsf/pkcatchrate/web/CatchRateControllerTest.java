@@ -169,4 +169,109 @@ class CatchRateControllerTest {
             """))
         .andExpect(status().isBadRequest());
   }
+
+  @Test
+  void quickBallOnFirstTurnInGenVBoostsThroughTheApi() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "mewtwo",
+              "level": 70,
+              "currentHp": 250,
+              "ball": "QUICK",
+              "generation": "GEN_V",
+              "battleContext": {
+                "turnsElapsed": 0,
+                "isFirstTurn": true,
+                "isAlreadyCaught": false,
+                "fromFishing": false,
+                "onWater": false,
+                "inCaveOrNight": false
+              }
+            }
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.a").value(5))
+        .andExpect(jsonPath("$.b").value(24523))
+        .andExpect(jsonPath("$.probability").value(closeTo(5.24, 0.01)));
+  }
+
+  @Test
+  void battleContextIsOptionalAndDefaultsToNeutral() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "mewtwo",
+              "level": 70,
+              "currentHp": 250,
+              "ball": "QUICK",
+              "generation": "GEN_V"
+            }
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.a").value(1))
+        .andExpect(jsonPath("$.b").value(16400));
+  }
+
+  @Test
+  void duskBallInCaveOrNightReturnsBoostedCatchInGenV() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "mewtwo",
+              "level": 70,
+              "currentHp": 250,
+              "ball": "DUSK",
+              "generation": "GEN_V",
+              "battleContext": {
+                "turnsElapsed": 0,
+                "isFirstTurn": false,
+                "isAlreadyCaught": false,
+                "fromFishing": false,
+                "onWater": false,
+                "inCaveOrNight": true
+              }
+            }
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.a").value(3))
+        .andExpect(jsonPath("$.b").value(22431))
+        .andExpect(jsonPath("$.probability").value(closeTo(4.01, 0.01)));
+  }
+
+  @Test
+  void dreamBallOutsideGen6PlusReturnsUnprocessableEntity() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "mewtwo",
+              "level": 70,
+              "currentHp": 250,
+              "ball": "DREAM",
+              "status": "SLEEP",
+              "generation": "GEN_V"
+            }
+            """))
+        .andExpect(status().isUnprocessableEntity());
+  }
+
+  @Test
+  void excludedBallReturnsUnprocessableEntity() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "mewtwo",
+              "level": 70,
+              "currentHp": 250,
+              "ball": "LURE",
+              "generation": "GEN_VI_PLUS"
+            }
+            """))
+        .andExpect(status().isUnprocessableEntity());
+  }
 }

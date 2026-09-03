@@ -1,9 +1,12 @@
 package com.jailsonsf.pkcatchrate.engine;
 
 import com.jailsonsf.pkcatchrate.ball.PokeBall;
+import com.jailsonsf.pkcatchrate.battle.BattleContext;
 import com.jailsonsf.pkcatchrate.generation.GameGeneration;
 import com.jailsonsf.pkcatchrate.status.StatusCondition;
 import org.junit.jupiter.api.Test;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -161,5 +164,191 @@ class CatchEngineTest {
         assertThat(gen5.probability()).isEqualTo(100.0);
         assertThat(gen5.a()).isEqualTo(255);
         assertThat(gen5.b()).isEqualTo(65535);
+    }
+
+    @Test
+    void quickBallOnFirstTurnInGenVBoostsToFiveTimes() {
+        CatchResult result = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.QUICK, StatusCondition.NONE, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(0, true, false, false, false, false)));
+
+        assertThat(result.guaranteed()).isFalse();
+        assertThat(result.a()).isEqualTo(5);
+        assertThat(result.b()).isEqualTo(24523);
+        assertThat(result.probability()).isCloseTo(5.239393, within(0.001));
+    }
+
+    @Test
+    void quickBallFirstTurnMultiplierDiffersByGenerationBucket() {
+        CatchResult gen34 = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.QUICK, StatusCondition.NONE, GameGeneration.GEN_III_IV,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(0, true, false, false, false, false)));
+        CatchResult gen6 = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.QUICK, StatusCondition.NONE, GameGeneration.GEN_VI_PLUS,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(0, true, false, false, false, false)));
+
+        assertThat(gen34.a()).isEqualTo(4);
+        assertThat(gen34.b()).isEqualTo(23301);
+        assertThat(gen6.a()).isEqualTo(5);
+        assertThat(gen6.b()).isEqualTo(31355);
+        assertThat(gen6.probability()).isCloseTo(5.239713, within(0.001));
+    }
+
+    @Test
+    void quickBallAfterFirstTurnStaysNeutral() {
+        CatchResult result = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.QUICK, StatusCondition.NONE, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(5, false, false, false, false, false)));
+
+        assertThat(result.a()).isEqualTo(1);
+        assertThat(result.b()).isEqualTo(16400);
+        assertThat(result.probability()).isCloseTo(1.567082, within(0.001));
+    }
+
+    @Test
+    void duskBallInCaveWithSleepingTargetInGen6Plus() {
+        CatchResult result = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.DUSK, StatusCondition.SLEEP, GameGeneration.GEN_VI_PLUS,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(0, false, false, false, false, true)));
+
+        assertThat(result.a()).isEqualTo(7);
+        assertThat(result.b()).isEqualTo(33831);
+        assertThat(result.probability()).isCloseTo(7.101329, within(0.001));
+    }
+
+    @Test
+    void netBallOnBugTargetInGen6PlusBoostsCatchValue() {
+        CatchResult result = engine.compute(new CatchRequest(
+                190, 35, 50, 110, PokeBall.NET, StatusCondition.NONE, GameGeneration.GEN_VI_PLUS,
+                Optional.of("bug"), Optional.of("grass"), null));
+
+        assertThat(result.a()).isEqualTo(221);
+        assertThat(result.b()).isEqualTo(63836);
+        assertThat(result.probability()).isCloseTo(90.020815, within(0.001));
+    }
+
+    @Test
+    void timerBallCapsAtFourTimesOnTurnThirtyInGen34() {
+        CatchResult turn29 = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.TIMER, StatusCondition.NONE, GameGeneration.GEN_III_IV,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(29, false, false, false, false, false)));
+        CatchResult turn30 = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.TIMER, StatusCondition.NONE, GameGeneration.GEN_III_IV,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(30, false, false, false, false, false)));
+
+        assertThat(turn29.a()).isEqualTo(3);
+        assertThat(turn29.b()).isEqualTo(21845);
+        assertThat(turn30.a()).isEqualTo(4);
+        assertThat(turn30.b()).isEqualTo(23301);
+    }
+
+    @Test
+    void timerBallCapsAtFourTimesOnTurnTenInGenFive() {
+        CatchResult turn9 = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.TIMER, StatusCondition.NONE, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(9, false, false, false, false, false)));
+        CatchResult turn10 = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.TIMER, StatusCondition.NONE, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(10, false, false, false, false, false)));
+        CatchResult turn100 = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.TIMER, StatusCondition.NONE, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(100, false, false, false, false, false)));
+
+        assertThat(turn9.a()).isEqualTo(3);
+        assertThat(turn9.b()).isEqualTo(22746);
+        assertThat(turn10.a()).isEqualTo(4);
+        assertThat(turn10.b()).isEqualTo(23193);
+        assertThat(turn100.a()).isEqualTo(turn10.a());
+        assertThat(turn100.b()).isEqualTo(turn10.b());
+    }
+
+    @Test
+    void repeatBallOnAlreadyCaughtTargetInGen6Plus() {
+        CatchResult result = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.REPEAT, StatusCondition.NONE, GameGeneration.GEN_VI_PLUS,
+                Optional.empty(), Optional.empty(),
+                new BattleContext(0, false, true, false, false, false)));
+
+        assertThat(result.a()).isEqualTo(3);
+        assertThat(result.b()).isEqualTo(29326);
+        assertThat(result.probability()).isCloseTo(4.009513, within(0.001));
+    }
+
+    @Test
+    void dreamBallOnAsleepTargetInGen6PlusIsNotGuaranteedButStrong() {
+        CatchResult result = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.DREAM, StatusCondition.SLEEP, GameGeneration.GEN_VI_PLUS,
+                Optional.empty(), Optional.empty(), null));
+
+        assertThat(result.a()).isEqualTo(10);
+        assertThat(result.b()).isEqualTo(35707);
+        assertThat(result.probability()).isCloseTo(8.812390, within(0.001));
+    }
+
+    @Test
+    void conditionalBallWithoutBattleContextFallsBackToNeutral() {
+        CatchResult dusk = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.DUSK, StatusCondition.NONE, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(), null));
+        CatchResult quick = engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.QUICK, StatusCondition.NONE, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(), null));
+
+        assertThat(dusk.a()).isEqualTo(1);
+        assertThat(quick.a()).isEqualTo(1);
+        assertThat(dusk.probability()).isEqualTo(quick.probability());
+    }
+
+    @Test
+    void dreamBallIsNotAvailableBeforeGen6Plus() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.DREAM, StatusCondition.SLEEP, GameGeneration.GEN_V,
+                Optional.empty(), Optional.empty(), null)))
+                .isInstanceOf(BallNotAvailableException.class);
+    }
+
+    @Test
+    void lureBallIsNeverAvailable() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> engine.compute(new CatchRequest(
+                3, 106, 70, 250, PokeBall.LURE, StatusCondition.NONE, GameGeneration.GEN_VI_PLUS,
+                Optional.empty(), Optional.empty(), null)))
+                .isInstanceOf(BallNotAvailableException.class);
+    }
+
+    @Test
+    void masterBallRemainsGuaranteedInEveryGeneration() {
+        for (GameGeneration generation : GameGeneration.values()) {
+            CatchResult result = engine.compute(new CatchRequest(
+                    3, 106, 70, 250, PokeBall.MASTER, StatusCondition.NONE, generation,
+                    Optional.empty(), Optional.empty(), null));
+            assertThat(result.guaranteed()).isTrue();
+            assertThat(result.probability()).isEqualTo(100.0);
+        }
+    }
+
+    @Test
+    void nestBallBoostsLowLevelTargetsMoreThanHighLevelInGen34() {
+        CatchResult low = engine.compute(new CatchRequest(
+                190, 35, 5, 20, PokeBall.NEST, StatusCondition.NONE, GameGeneration.GEN_III_IV,
+                Optional.empty(), Optional.empty(), null));
+        CatchResult high = engine.compute(new CatchRequest(
+                190, 35, 100, 211, PokeBall.NEST, StatusCondition.NONE, GameGeneration.GEN_III_IV,
+                Optional.empty(), Optional.empty(), null));
+
+        assertThat(low.a()).isEqualTo(221);
+        assertThat(low.b()).isEqualTo(65535);
+        assertThat(high.a()).isEqualTo(63);
+        assertThat(high.b()).isEqualTo(47661);
+        assertThat(low.probability()).isGreaterThan(high.probability());
     }
 }

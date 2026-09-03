@@ -1,6 +1,7 @@
 package com.jailsonsf.pkcatchrate.web;
 
 import com.jailsonsf.pkcatchrate.ball.PokeBall;
+import com.jailsonsf.pkcatchrate.battle.BattleContext;
 import com.jailsonsf.pkcatchrate.generation.GameGeneration;
 import com.jailsonsf.pkcatchrate.status.StatusCondition;
 import jakarta.validation.constraints.Max;
@@ -14,7 +15,8 @@ public record CatchRateRequest(
         @NotNull @Min(1) Integer currentHp,
         @NotNull PokeBall ball,
         StatusCondition status,
-        GameGeneration generation) {
+        GameGeneration generation,
+        BattleContext battleContext) {
 
     public CatchRateRequest {
         if (status == null) {
