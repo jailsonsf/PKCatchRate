@@ -2,6 +2,9 @@ package com.jailsonsf.pkcatchrate.engine;
 
 import com.jailsonsf.pkcatchrate.ball.PokeBall;
 import com.jailsonsf.pkcatchrate.battle.BattleContext;
+import com.jailsonsf.pkcatchrate.exception.BallNotAvailableException;
+import com.jailsonsf.pkcatchrate.exception.InvalidHpException;
+import com.jailsonsf.pkcatchrate.exception.InvalidLevelException;
 import com.jailsonsf.pkcatchrate.generation.GameGeneration;
 import com.jailsonsf.pkcatchrate.status.StatusCondition;
 import org.junit.jupiter.api.Test;
@@ -9,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 class CatchEngineTest {
@@ -311,7 +315,7 @@ class CatchEngineTest {
 
     @Test
     void dreamBallIsNotAvailableBeforeGen6Plus() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> engine.compute(new CatchRequest(
+        assertThatThrownBy(() -> engine.compute(new CatchRequest(
                 3, 106, 70, 250, PokeBall.DREAM, StatusCondition.SLEEP, GameGeneration.GEN_V,
                 Optional.empty(), Optional.empty(), null)))
                 .isInstanceOf(BallNotAvailableException.class);
@@ -319,7 +323,7 @@ class CatchEngineTest {
 
     @Test
     void lureBallIsNeverAvailable() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> engine.compute(new CatchRequest(
+        assertThatThrownBy(() -> engine.compute(new CatchRequest(
                 3, 106, 70, 250, PokeBall.LURE, StatusCondition.NONE, GameGeneration.GEN_VI_PLUS,
                 Optional.empty(), Optional.empty(), null)))
                 .isInstanceOf(BallNotAvailableException.class);
@@ -351,4 +355,38 @@ class CatchEngineTest {
         assertThat(high.b()).isEqualTo(47661);
         assertThat(low.probability()).isGreaterThan(high.probability());
     }
+
+    @Test
+    void levelBelowOneThrowsInvalidLevel() {
+        assertThatThrownBy(() -> engine.compute(new CatchRequest(
+                190, 35, 0, 110, PokeBall.POKE, StatusCondition.NONE, GameGeneration.GEN_III_IV)))
+                .isInstanceOf(InvalidLevelException.class);
+    }
+
+    @Test
+    void levelAboveOneHundredThrowsInvalidLevel() {
+        assertThatThrownBy(() -> engine.compute(new CatchRequest(
+                190, 35, 101, 110, PokeBall.POKE, StatusCondition.NONE, GameGeneration.GEN_III_IV)))
+                .isInstanceOf(InvalidLevelException.class);
+    }
+
+    @Test
+    void zeroCurrentHpThrowsInvalidHp() {
+        assertThatThrownBy(() -> engine.compute(new CatchRequest(
+                190, 35, 50, 0, PokeBall.POKE, StatusCondition.NONE, GameGeneration.GEN_III_IV)))
+                .isInstanceOf(InvalidHpException.class);
+    }
+
+    @Test
+    void currentHpAboveMaxHpIsClampedToMaxHp() {
+        CatchResult fullHp = engine.compute(new CatchRequest(
+                190, 35, 50, 110, PokeBall.POKE, StatusCondition.NONE, GameGeneration.GEN_III_IV));
+        CatchResult overHp = engine.compute(new CatchRequest(
+                190, 35, 50, 200, PokeBall.POKE, StatusCondition.NONE, GameGeneration.GEN_III_IV));
+
+        assertThat(overHp.a()).isEqualTo(fullHp.a());
+        assertThat(overHp.b()).isEqualTo(fullHp.b());
+        assertThat(overHp.probability()).isEqualTo(fullHp.probability());
+    }
+
 }

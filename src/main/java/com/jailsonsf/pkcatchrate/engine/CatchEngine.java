@@ -1,6 +1,9 @@
 package com.jailsonsf.pkcatchrate.engine;
 
 import com.jailsonsf.pkcatchrate.ball.PokeBallRates;
+import com.jailsonsf.pkcatchrate.exception.BallNotAvailableException;
+import com.jailsonsf.pkcatchrate.exception.InvalidHpException;
+import com.jailsonsf.pkcatchrate.exception.InvalidLevelException;
 import com.jailsonsf.pkcatchrate.status.StatusCondition;
 import org.springframework.stereotype.Service;
 
@@ -10,6 +13,7 @@ public class CatchEngine {
     private final PokeBallRates ballRates = new PokeBallRates();
 
     public CatchResult compute(CatchRequest request) {
+        validate(request);
         if (!ballRates.isAvailable(request.ball(), request.generation())) {
             throw new BallNotAvailableException(request.ball(), request.generation());
         }
@@ -23,6 +27,15 @@ public class CatchEngine {
             case GEN_V -> computeGen56(request, multiplier, 1.0 / 4.0, 3);
             case GEN_VI_PLUS -> computeGen56(request, multiplier, 3.0 / 16.0, 4);
         };
+    }
+
+    private static void validate(CatchRequest request) {
+        if (request.level() < 1 || request.level() > 100) {
+            throw new InvalidLevelException(request.level());
+        }
+        if (request.currentHp() < 1) {
+            throw new InvalidHpException(request.currentHp());
+        }
     }
 
     private static CatchResult computeGen34(CatchRequest request, double multiplier) {

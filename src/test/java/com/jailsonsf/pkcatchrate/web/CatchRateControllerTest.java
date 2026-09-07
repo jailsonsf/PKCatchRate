@@ -56,7 +56,7 @@ class CatchRateControllerTest {
   }
 
   @Test
-  void rejectsLevelZero() throws Exception {
+  void rejectsLevelZeroWithValidationBody() throws Exception {
     mockMvc.perform(post("/api/catch-rate")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
@@ -67,7 +67,8 @@ class CatchRateControllerTest {
               "ball": "POKE"
             }
             """))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
   }
 
   @Test
@@ -82,7 +83,8 @@ class CatchRateControllerTest {
               "ball": "POKE"
             }
             """))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
   }
 
   @Test
@@ -97,11 +99,12 @@ class CatchRateControllerTest {
               "ball": "POKE"
             }
             """))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"));
   }
 
   @Test
-  void returnsNotFoundForUnknownSpecies() throws Exception {
+  void returnsNotFoundForUnknownSpeciesWithConsistentBody() throws Exception {
     mockMvc.perform(post("/api/catch-rate")
         .contentType(MediaType.APPLICATION_JSON)
         .content("""
@@ -112,7 +115,10 @@ class CatchRateControllerTest {
               "ball": "POKE"
             }
             """))
-        .andExpect(status().isNotFound());
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.status").value(404))
+        .andExpect(jsonPath("$.error").value("UNKNOWN_POKEMON"))
+        .andExpect(jsonPath("$.message").value("Unknown species: missingno"));
   }
 
   @Test
@@ -152,6 +158,24 @@ class CatchRateControllerTest {
         .andExpect(jsonPath("$.a").value(63))
         .andExpect(jsonPath("$.b").value(50473))
         .andExpect(jsonPath("$.probability").value(closeTo(35.18, 0.01)));
+  }
+
+  @Test
+  void clampsCurrentHpAboveMaxHpThroughTheApi() throws Exception {
+    mockMvc.perform(post("/api/catch-rate")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "name": "pikachu",
+              "level": 50,
+              "currentHp": 9999,
+              "ball": "POKE"
+            }
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.a").value(63))
+        .andExpect(jsonPath("$.b").value(47661))
+        .andExpect(jsonPath("$.probability").value(closeTo(27.97, 0.01)));
   }
 
   @Test
@@ -256,7 +280,9 @@ class CatchRateControllerTest {
               "generation": "GEN_V"
             }
             """))
-        .andExpect(status().isUnprocessableEntity());
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.error").value("BALL_NOT_AVAILABLE"))
+        .andExpect(jsonPath("$.message").value("Ball DREAM is not available in GEN_V"));
   }
 
   @Test
@@ -272,6 +298,7 @@ class CatchRateControllerTest {
               "generation": "GEN_VI_PLUS"
             }
             """))
-        .andExpect(status().isUnprocessableEntity());
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.error").value("BALL_NOT_AVAILABLE"));
   }
 }
