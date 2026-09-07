@@ -1,6 +1,16 @@
 # 05 — Comprehensive reference-value test suite
 
-Status: ready-for-agent
+Status: ready-for-human
+
+## Comments
+
+Implemented as test-only (no production changes). 116 tests green (was 73). Three new test files:
+
+- `engine/CatchEngineGoldenValuesTest` — parameterized table of 25 documented golden anchors, each labelled with its source (Emerald decompiled `Cmd_handleballthrow`, Bulbapedia worked example, Python/Dragonfly Cave reference as recorded in issues 01–03), asserting `a`, `b`, probability within 0.001, and `guaranteed`. Covers all three Game Generations, the fixed balls (Poké/Great/Ultra/Master), guaranteed captures (Master + a≥255), and the anchored conditional balls (Quick, Dusk, Net, Dream, Repeat, Nest at its neutral 1× high-level fallback). Deliberately restricted to externally-verified values — no hand-recomputed cross-products (anti-tautology).
+- `engine/CatchEnginePropertyTest` — deterministic sweeps over the public `CatchEngine` seam (no new dependency): probability ∈ [0,100]; guaranteed ⇒ 100% with a=255/b=65535/expectedBalls=1 and (non-Master) guaranteed ⇔ a≥255; Master always guaranteed; `probability × expectedBalls ≈ 100`; monotonicity (lower Current HP, beneficial Status Condition, stronger fixed ball, and each active conditional ball never decrease probability); status-sibling equivalence (sleep≡freeze, paralyze≡poison≡burn). These surfaced one real domain nuance: Dream Ball boosts SLEEP but not FREEZE, so the equivalence sweep excludes DREAM and a dedicated test asserts the boost.
+- `web/CatchRateControllerWebMvcTest` — `@WebMvcTest` slice (real `CatchEngine` imported, `PokemonRepository` mocked): happy path through the real engine, clamping currentHP>maxHP, and each HTTP-reachable issue-04 error mapping (404 `UNKNOWN_POKEMON`, 422 `BALL_NOT_AVAILABLE`, 400 `VALIDATION_FAILED`). INVALID_LEVEL/INVALID_HP mappings remain advice-unit-covered (issue 04) because DTO bean validation pre-empts them over HTTP.
+
+Decisions confirmed during planning: golden table uses published/documented anchors only; property tests are looped sweeps (no jqwik dependency); the `@WebMvcTest` slice is additive alongside the existing full-context `@SpringBootTest` controller test.
 
 ## What to build
 
